@@ -1,15 +1,45 @@
 import random
 import re
 import time
+from operator import eq
 from string import ascii_lowercase
 
 
 class DummyPlayer:
+
     def __init__(self, gridsize):
         self.gridsize = gridsize
+        self.grid = []
+        self.knowledge_base = set()
 
-    def nextMove(self):
-        return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))
+    def next_move(self):
+        return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))     # randomly making moves
+
+    def equation_tostring(self, eq):
+        s = ""
+        for row, col in eq[0]:
+            s += chr(ord('a') + col) + str(row+1) + " + "
+        return s[:-2] + " = " + eq[1]
+
+    def combine_equations(self, eq1, eq2):
+        pass
+
+    def put_new_info(self, info, new_grid):
+        # TODO: Implement put_new_info()
+        self.grid = new_grid
+        LHS = []
+        for cell in getneighbors(grid, info[0], info[1]):
+            if self.grid[cell[0]][cell[1]] == ' ':
+                LHS.append(cell)
+        new_equation = (tuple(LHS), info[2])
+        if new_equation not in self.knowledge_base:
+            self.knowledge_base.add(new_equation)
+        print(self.equation_tostring(new_equation))
+        for eq in self.knowledge_base:
+            if eq != new_equation:
+                self.combine_equations(eq, new_equation)
+
+
 
 def setupgrid(gridsize, start, numberofmines):
     emptygrid = [['0' for i in range(gridsize)] for i in range(gridsize)]
@@ -113,6 +143,7 @@ def showcells(grid, currgrid, rowno, colno):
             # Repeat function for each neighbor that doesn't have a flag
             if currgrid[r][c] != 'F':
                 showcells(grid, currgrid, r, c)'''
+    return grid[rowno][colno]
 
 '''
 def playagain():
@@ -144,9 +175,13 @@ def parseinput(inputstring, gridsize, helpmessage):
     return {'cell': cell, 'flag': flag, 'message': message}
 
 
-def playgame(dummyPlayer = None, gridsize = 9, numberofmines = 10):
-    # gridsize = 9
-    # numberofmines = 10
+def playgame(dummyPlayer=None, grid=None, numberofmines=-1):
+    if grid is None:
+        gridsize = 9
+        numberofmines = 10
+    else:
+        gridsize = len(grid)
+        numberofmines = numberofmines
 
     currgrid = [[' ' for i in range(gridsize)] for i in range(gridsize)]
 
@@ -162,10 +197,10 @@ def playgame(dummyPlayer = None, gridsize = 9, numberofmines = 10):
 
     while True:
         minesleft = numberofmines - len(flags)
-        if dummyPlayer == None:
+        if dummyPlayer is None:
             prompt = input('Enter the cell ({} mines left): '.format(minesleft))
         else:
-            prompt = dummyPlayer.nextMove()
+            prompt = dummyPlayer.next_move()
             print("Move: ", prompt)
         result = parseinput(prompt, gridsize, helpmessage + '\n')
 
@@ -208,7 +243,9 @@ def playgame(dummyPlayer = None, gridsize = 9, numberofmines = 10):
                 return
 
             elif currcell == ' ':
-                showcells(grid, currgrid, rowno, colno)
+                cell_value = showcells(grid, currgrid, rowno, colno)
+                if dummyPlayer is not None:
+                    dummyPlayer.put_new_info((rowno, colno, cell_value), currgrid)
 
             else:
                 message = "That cell is already shown"
@@ -230,6 +267,9 @@ def playgame(dummyPlayer = None, gridsize = 9, numberofmines = 10):
 
 
 if __name__ == "__main__":
-    gridsize = 9
-    numberofmines = 10
-    playgame(DummyPlayer(gridsize), gridsize, numberofmines)
+
+    gridsize = 4
+    numberofmines = 2
+    grid, mines = setupgrid(gridsize, (1, 1), numberofmines)
+    playgame(DummyPlayer(gridsize), grid, numberofmines)
+    # playgame()
