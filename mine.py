@@ -4,6 +4,13 @@ import time
 from string import ascii_lowercase
 
 
+class DummyPlayer:
+    def __init__(self, gridsize):
+        self.gridsize = gridsize
+
+    def nextMove(self):
+        return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))
+
 def setupgrid(gridsize, start, numberofmines):
     emptygrid = [['0' for i in range(gridsize)] for i in range(gridsize)]
 
@@ -137,9 +144,9 @@ def parseinput(inputstring, gridsize, helpmessage):
     return {'cell': cell, 'flag': flag, 'message': message}
 
 
-def playgame():
-    gridsize = 9
-    numberofmines = 10
+def playgame(dummyPlayer = None, gridsize = 9, numberofmines = 10):
+    # gridsize = 9
+    # numberofmines = 10
 
     currgrid = [[' ' for i in range(gridsize)] for i in range(gridsize)]
 
@@ -155,7 +162,11 @@ def playgame():
 
     while True:
         minesleft = numberofmines - len(flags)
-        prompt = input('Enter the cell ({} mines left): '.format(minesleft))
+        if dummyPlayer == None:
+            prompt = input('Enter the cell ({} mines left): '.format(minesleft))
+        else:
+            prompt = dummyPlayer.nextMove()
+            print("Move: ", prompt)
         result = parseinput(prompt, gridsize, helpmessage + '\n')
 
         message = result['message']
@@ -217,4 +228,8 @@ def playgame():
         showgrid(currgrid)
         print(message)
 
-playgame()
+
+if __name__ == "__main__":
+    gridsize = 9
+    numberofmines = 10
+    playgame(DummyPlayer(gridsize), gridsize, numberofmines)
