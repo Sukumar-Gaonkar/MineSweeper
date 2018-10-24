@@ -11,9 +11,14 @@ class DummyPlayer:
         self.gridsize = gridsize
         self.grid = []
         self.knowledge_base = set()
+        self.possible_moves = []
 
     def next_move(self):
-        return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))     # randomly making moves
+        if not self.possible_moves:
+            move = self.possible_moves.pop()
+            return chr(ord('a') + move[1]) + str(move[0] - 1) + "f" if move[2] == 1 else ""
+        else:
+            return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))     # randomly making moves
 
     def equation_tostring(self, eq):
         s = ""
@@ -22,7 +27,45 @@ class DummyPlayer:
         return s[:-2] + " = " + eq[1]
 
     def combine_equations(self, eq1, eq2):
-        pass
+
+        if len(eq1[0]) > len(eq2[0]):
+            smaller_eq = eq2
+            larger_eq = eq1
+        else:
+            smaller_eq = eq1
+            larger_eq = eq2
+
+        if smaller_eq[0].issubset(larger_eq[0]):
+            x = larger_eq[0] - smaller_eq[0]
+            inference_eq = (frozenset(x), int(larger_eq[1]) - int(smaller_eq[1]))
+            self.knowledge_base.remove(larger_eq)
+            print("Adding Inference Eq", self.equation_tostring(x), " From\n", self.equation_tostring(larger_eq[0]), "\n", self.equation_tostring(smaller_eq[0]))
+            self.add_equation_to_knowledgebase(inference_eq)
+
+
+    def add_equation_to_knowledgebase(self, new_equation):
+
+        if new_equation not in self.knowledge_base:
+            self.knowledge_base.add(new_equation)
+            print("Adding: ", self.equation_tostring(new_equation))
+
+            if len(new_equation[0]) > 1:
+                if new_equation[1] == 0:
+                    for row, col in new_equation[0]:
+                        self.possible_moves.insert(0, (row, col, 0))
+                        self.add_equation_to_knowledgebase(((row, col), 0))
+                elif new_equation[1] == len(new_equation[0]):
+                    for row, col in new_equation[0]:
+                        self.possible_moves.insert(0, (row, col, 1))
+                        self.add_equation_to_knowledgebase(((row, col), 1))
+            elif len(new_equation[0]) == 1:
+                # This is a final inference equation
+                # add next move
+                pass
+
+            for eq in self.knowledge_base:
+                if eq != new_equation:
+                    self.combine_equations(eq, new_equation)
 
     def put_new_info(self, info, new_grid):
         # TODO: Implement put_new_info()
@@ -31,13 +74,8 @@ class DummyPlayer:
         for cell in getneighbors(grid, info[0], info[1]):
             if self.grid[cell[0]][cell[1]] == ' ':
                 LHS.append(cell)
-        new_equation = (tuple(LHS), info[2])
-        if new_equation not in self.knowledge_base:
-            self.knowledge_base.add(new_equation)
-        print(self.equation_tostring(new_equation))
-        for eq in self.knowledge_base:
-            if eq != new_equation:
-                self.combine_equations(eq, new_equation)
+        new_equation = (frozenset(LHS), info[2])                    # equation = (<set of coordinates that are '1' in the equation>, <RHS of the equation>)
+        self.add_equation_to_knowledgebase(new_equation)
 
 
 
@@ -271,5 +309,5 @@ if __name__ == "__main__":
     gridsize = 4
     numberofmines = 2
     grid, mines = setupgrid(gridsize, (1, 1), numberofmines)
-    playgame(DummyPlayer(gridsize), grid, numberofmines)
-    # playgame()
+    # playgame(DummyPlayer(gridsize), grid, numberofmines)
+    playgame()
