@@ -5,78 +5,114 @@ from operator import eq
 from string import ascii_lowercase
 
 
+class Equation:
+    def __init__(self, lhs, rhs, influence_blocks):
+        self.lhs = frozenset(lhs)
+        self.rhs = int(rhs)
+        self.influence_blocks = frozenset(influence_blocks)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        return self.lhs == other.lhs
+
+    def __repr__(self):
+        s = ""
+        for row, col in self.lhs:
+            s += chr(ord('a') + col) + str(row + 1) + " + "
+        return s[:-2] + " = " + str(self.rhs)
+
+
 class DummyPlayer:
 
-    def __init__(self, gridsize):
-        self.gridsize = gridsize
+    def __init__(self):
+        self.gridsize = -1
         self.grid = []
         self.knowledge_base = set()
-        self.possible_moves = []
+        self.safe_moves = []
 
     def next_move(self):
-        if not self.possible_moves:
-            move = self.possible_moves.pop()
-            return chr(ord('a') + move[1]) + str(move[0] - 1) + "f" if move[2] == 1 else ""
+        print(self.knowledge_base)
+        if len(self.safe_moves) != 0:
+            move = self.safe_moves.pop()
+            return chr(ord('a') + move[1]) + str(move[0] + 1) + ("f" if move[2] == 1 else "")
         else:
-            return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))     # randomly making moves
+            if self.grid == []:
+                return "a1"     # First move
+            else:
+                for i in range(self.gridsize):
+                    for j in range(self.gridsize):
+                        if self.grid[i][j] == ' ':      # indicates unexplored node
+                            for eq in self.knowledge_base:
+                                # if the current cell is in any of the equation's LHS, then it might have a mine
+                                if (i, j) in eq.lhs:
+                                    break
+                            else:
+                                return chr(ord('a') + j) + str(i + 1)
+                else:
+                    # No cell was found which is unexplored and not present in any equation's LHS.
+                    # so pick randomly
+                    print("******************Logical Deadend******************\nPraying to the Almighty and making a random move!!!")
 
-    def equation_tostring(self, eq):
-        s = ""
-        for row, col in eq[0]:
-            s += chr(ord('a') + col) + str(row+1) + " + "
-        return s[:-2] + " = " + eq[1]
+                    return random.choice(ascii_lowercase[:self.gridsize]) + str(random.randrange(1, self.gridsize))     # randomly making moves
 
     def combine_equations(self, eq1, eq2):
 
-        if len(eq1[0]) > len(eq2[0]):
+        if len(eq1.lhs) > len(eq2.lhs):
             smaller_eq = eq2
             larger_eq = eq1
         else:
             smaller_eq = eq1
             larger_eq = eq2
 
-        if smaller_eq[0].issubset(larger_eq[0]):
-            x = larger_eq[0] - smaller_eq[0]
-            inference_eq = (frozenset(x), int(larger_eq[1]) - int(smaller_eq[1]))
-            self.knowledge_base.remove(larger_eq)
-            print("Adding Inference Eq", self.equation_tostring(x), " From\n", self.equation_tostring(larger_eq[0]), "\n", self.equation_tostring(smaller_eq[0]))
+        if smaller_eq.lhs.issubset(larger_eq.lhs):
+            x = larger_eq.lhs - smaller_eq.lhs
+            inference_eq = Equation(x, int(larger_eq.rhs) - int(smaller_eq.rhs), smaller_eq.influence_blocks | larger_eq.influence_blocks)             #(frozenset(x), int(larger_eq[1]) - int(smaller_eq[1]))
+            if larger_eq in self.knowledge_base:
+                self.knowledge_base.remove(larger_eq)
+            # print("Adding Inference Eq", inference_eq, " From\n", larger_eq, "\n", smaller_eq)
             self.add_equation_to_knowledgebase(inference_eq)
 
-
     def add_equation_to_knowledgebase(self, new_equation):
-
         if new_equation not in self.knowledge_base:
             self.knowledge_base.add(new_equation)
-            print("Adding: ", self.equation_tostring(new_equation))
+            print("Adding: ", new_equation)
+            print(self.knowledge_base)
+            if new_equation.rhs == 1 and len(new_equation.lhs) == 1:
+                tepm = 0
+            if len(new_equation.lhs) > 1:
+                if new_equation.rhs == 0:
+                    self.knowledge_base.remove(new_equation)
+                    for row, col in new_equation.lhs:
+                        if (row, col, 0) not in self.safe_moves:
+                            self.safe_moves.insert(0, (row, col, 0))
+                        self.add_equation_to_knowledgebase(Equation([(row, col)], 0, new_equation.influence_blocks))
+                elif new_equation.rhs == len(new_equation.lhs):
+                    self.knowledge_base.remove(new_equation)
+                    for row, col in new_equation.lhs:
+                        if (row, col, 1) not in self.safe_moves:
+                            self.safe_moves.insert(0, (row, col, 1))
+                        self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))
 
-            if len(new_equation[0]) > 1:
-                if new_equation[1] == 0:
-                    for row, col in new_equation[0]:
-                        self.possible_moves.insert(0, (row, col, 0))
-                        self.add_equation_to_knowledgebase(((row, col), 0))
-                elif new_equation[1] == len(new_equation[0]):
-                    for row, col in new_equation[0]:
-                        self.possible_moves.insert(0, (row, col, 1))
-                        self.add_equation_to_knowledgebase(((row, col), 1))
-            elif len(new_equation[0]) == 1:
-                # This is a final inference equation
-                # add next move
-                pass
-
-            for eq in self.knowledge_base:
-                if eq != new_equation:
+            for eq in self.knowledge_base.copy():
+                if eq.lhs != new_equation.lhs:
                     self.combine_equations(eq, new_equation)
 
     def put_new_info(self, info, new_grid):
-        # TODO: Implement put_new_info()
         self.grid = new_grid
+        self.gridsize = len(new_grid)
         LHS = []
-        for cell in getneighbors(grid, info[0], info[1]):
+        RHS = info[2]
+        for cell in getneighbors(self.grid, info[0], info[1]):
             if self.grid[cell[0]][cell[1]] == ' ':
                 LHS.append(cell)
-        new_equation = (frozenset(LHS), info[2])                    # equation = (<set of coordinates that are '1' in the equation>, <RHS of the equation>)
-        self.add_equation_to_knowledgebase(new_equation)
+            elif self.grid[cell[0]][cell[1]] == 'F':
+                RHS = RHS - 1
 
+        if len(LHS) != 0:
+            new_equation = Equation(LHS, info[2], [(info[0], info[1])])
+            self.add_equation_to_knowledgebase(new_equation)
 
 
 def setupgrid(gridsize, start, numberofmines):
@@ -213,17 +249,19 @@ def parseinput(inputstring, gridsize, helpmessage):
     return {'cell': cell, 'flag': flag, 'message': message}
 
 
-def playgame(dummyPlayer=None, grid=None, numberofmines=-1):
+def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
     if grid is None:
         gridsize = 9
         numberofmines = 10
+        grid = []
+        mines = []
+        dummyPlayer.gridsize = gridsize
     else:
         gridsize = len(grid)
         numberofmines = numberofmines
 
     currgrid = [[' ' for i in range(gridsize)] for i in range(gridsize)]
 
-    grid = []
     flags = []
     #starttime = 0
 
@@ -253,6 +291,7 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1):
 
             if not grid:
                 grid, mines = setupgrid(gridsize, cell, numberofmines)
+                print(grid)
             '''
             if not starttime:
                 starttime = time.time()'''
@@ -283,7 +322,7 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1):
             elif currcell == ' ':
                 cell_value = showcells(grid, currgrid, rowno, colno)
                 if dummyPlayer is not None:
-                    dummyPlayer.put_new_info((rowno, colno, cell_value), currgrid)
+                    dummyPlayer.put_new_info((rowno, colno, int(cell_value)), currgrid)
 
             else:
                 message = "That cell is already shown"
@@ -306,8 +345,15 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1):
 
 if __name__ == "__main__":
 
-    gridsize = 4
-    numberofmines = 2
-    grid, mines = setupgrid(gridsize, (1, 1), numberofmines)
-    # playgame(DummyPlayer(gridsize), grid, numberofmines)
-    playgame()
+    # Positive Testcase
+    # numberofmines = 2
+    # grid = [['0', '1', '1', '1'], ['0', '2', 'X', '2'], ['0', '2', 'X', '2'], ['0', '1', '1', '1']]
+    # mines = [(1, 2), (2, 2)]
+
+    # Negative Testcase
+    numberofmines = 10
+    grid = [['0', '0', '0', '0', '1', 'X', '2', '1', '0'], ['0', '0', '0', '0', '1', '2', 'X', '1', '0'], ['0', '0', '0', '0', '1', '2', '2', '1', '0'], ['0', '0', '0', '0', '1', 'X', '2', '1', '0'], ['0', '0', '0', '0', '1', '2', 'X', '1', '0'], ['1', '1', '1', '0', '1', '2', '3', '3', '2'], ['1', 'X', '1', '0', '1', 'X', '3', 'X', 'X'], ['1', '2', '2', '1', '1', '2', 'X', '3', '2'], ['0', '1', 'X', '1', '0', '1', '1', '1', '0']]
+    mines = [(0, 5),(1, 6),(3, 5),(4, 6),(6, 1),(6, 5),(6, 7),(6, 8),(7, 6),(8, 2)]
+    playgame(DummyPlayer(), grid, numberofmines, mines)
+    # playgame(DummyPlayer(), None, None, None)
+    # playgame()
