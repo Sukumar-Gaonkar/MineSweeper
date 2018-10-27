@@ -7,8 +7,9 @@ import re
 import time
 from operator import eq
 from string import ascii_lowercase
+import numpy as np
 
-
+    
 class Equation:
     def __init__(self, lhs, rhs, influence_blocks):
         self.lhs = frozenset(lhs)
@@ -67,10 +68,10 @@ class DummyPlayer:
                                 #return chr(ord('a') + j) + str(i + 1)
                 print("\n******************Logical Deadend******************\nPraying to the Almighty and making a random move!!!")
                 if len(l) != 0:
-                    return random.choice(l)  
+                    return random.choice(l)
                 else:
                     return random.choice(r)
-                    
+
               #  else:
                     # No cell was found which is unexplored and not present in any equation's LHS.
                     # so pick randomly
@@ -107,7 +108,7 @@ class DummyPlayer:
                   #  self.knowledge_base.remove(new_equation)
                     for row, col in new_equation.lhs:
                         if (row, col, 0) not in self.safe_moves:
-                            
+
                             self.safe_moves.insert(0, (row, col, 0))
                             print("Inference: {} = 0 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i, j)) for i, j in new_equation.influence_blocks])))
                             # print("Safe Moves: ", self.safe_moves)
@@ -116,14 +117,14 @@ class DummyPlayer:
                   #  self.knowledge_base.remove(new_equation)
                     for row, col in new_equation.lhs:
                         if (row, col, 1) not in self.safe_moves:
-                            
+
                             self.safe_moves.insert(0, (row, col, 1))
                             print("Inference: {} = 1 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
                             # print("Safe Moves: ", self.safe_moves)
-                            self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))            
+                            self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))
 
-                
-                                
+
+
             elif len(new_equation.lhs) > 1:
                 if new_equation.rhs == 0:
                     self.knowledge_base.remove(new_equation)
@@ -364,7 +365,7 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
                 showgrid(grid)
                 #if playagain():
                     #playgame()
-                return
+                return 0
 
             elif currcell == ' ':
                 cell_value = showcells(grid, currgrid, rowno, colno)
@@ -384,10 +385,12 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
                 '''
                 if playagain():
                     playgame()'''
-                return
+                return 1
 
         showgrid(currgrid)
         print(message)
+
+
 
 
 if __name__ == "__main__":
@@ -396,12 +399,35 @@ if __name__ == "__main__":
     # numberofmines = 2
     # grid = [['0', '1', '1', '1'], ['0', '2', 'X', '2'], ['0', '2', 'X', '2'], ['0', '1', '1', '1']]
     # mines = [(1, 2), (2, 2)]
+    fileName = "D:/results/profilerResults_" + time.strftime("%Y%m%d-%H%M%S") + ".csv"
+    f = open(fileName, "a", 1)
+    f.write("Mines;Gridsize;IterationNo;Rmse;Density;Result\n")
 
+    for i in range(5,20,2): # i=mines
+        for j in range(5,20,5): # j=gridsize
+            for k in range(1,5):#k=iteration no
+
+                a = random.randint(0,  j-1)
+                b = random.randint(0, j-1)
+                p,q=setupgrid(j, (a,b), i)
+                x=playgame(DummyPlayer(), p, i, q)
+                density=i/j
+                mean=(sum(s for s, t in q)/j,sum(t for s, t in q)/j)
+                sum1=0
+                for i_1 in range(len(q)):
+                    sum1=sum1+np.sum(np.square(np.subtract(q[i_1],mean)))
+                sum1=sum1/i
+                rmse=np.sqrt(sum1)
+              #  sum(s for s, t in q),sum(t for s, t in q)
+                f.write("{0};{1};{2};{3};{4}\n".format( i, j, k,rmse,density,x))
     # Negative Testcase
+    '''
     numberofmines = 10
     grid = [['0', '0', '0', '0', '1', 'X', '2', '1', '0'], ['0', '0', '0', '0', '1', '2', 'X', '1', '0'], ['0', '0', '0', '0', '1', '2', '2', '1', '0'], ['0', '0', '0', '0', '1', 'X', '2', '1', '0'], ['0', '0', '0', '0', '1', '2', 'X', '1', '0'], ['1', '1', '1', '0', '1', '2', '3', '3', '2'], ['1', 'X', '1', '0', '1', 'X', '3', 'X', 'X'], ['1', '2', '2', '1', '1', '2', 'X', '3', '2'], ['0', '1', 'X', '1', '0', '1', '1', '1', '0']]
     mines = [(0, 5),(1, 6),(3, 5),(4, 6),(6, 1),(6, 5),(6, 7),(6, 8),(7, 6),(8, 2)]
+    
+    
     playgame(DummyPlayer(), grid, numberofmines, mines)
+    '''
     # playgame(DummyPlayer(), None, None, None)
     # playgame()
-
