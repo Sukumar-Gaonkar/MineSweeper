@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 22 19:05:39 2018
-
-@author: Karra's
 """
 import random
 import re
@@ -17,8 +15,12 @@ class Equation:
         self.rhs = int(rhs)
         self.influence_blocks = frozenset(influence_blocks)
 
+    @staticmethod
+    def cord_to_str(cord):
+        return chr(ord('a') + cord[1]) + str(cord[0] + 1)
+
     def __hash__(self):
-        return hash(str(self))
+        return hash(repr(self))
 
     def __eq__(self, other):
         return self.lhs == other.lhs
@@ -26,8 +28,11 @@ class Equation:
     def __repr__(self):
         s = ""
         for row, col in self.lhs:
-            s += chr(ord('a') + col) + str(row + 1) + " + "
+            s += Equation.cord_to_str((row, col)) + " + "
         return s[:-2] + " = " + str(self.rhs)
+
+    def __str__(self):
+        return self.__repr__() + " : " + str([Equation.cord_to_str((i, j)) for i, j in self.influence_blocks])
 
 
 class DummyPlayer:
@@ -42,7 +47,7 @@ class DummyPlayer:
         print(self.knowledge_base)
         if len(self.safe_moves) != 0:
             move = self.safe_moves.pop()
-            return chr(ord('a') + move[1]) + str(move[0] + 1) + ("f" if move[2] == 1 else "")
+            return Equation.cord_to_str(move) + ("f" if move[2] == 1 else "")
         else:
             if self.grid == []:
                 return "a1"     # First move
@@ -52,16 +57,16 @@ class DummyPlayer:
                 for i in range(self.gridsize):
                     for j in range(self.gridsize):
                         if self.grid[i][j] == ' ':      # indicates unexplored node
-                            r.append(chr(ord('a') + j) + str(i + 1))
+                            r.append(Equation.cord_to_str((i, j)))
                             for eq in self.knowledge_base:
                                 # if the current cell is in any of the equation's LHS, then it might have a mine
                                 if (i, j) in eq.lhs:
                                     break
                             else:
-                                l.append(chr(ord('a') + j) + str(i + 1))
+                                l.append(Equation.cord_to_str((i,j)))
                                 #return chr(ord('a') + j) + str(i + 1)
-                print("******************Logical Deadend******************\nPraying to the Almighty and making a random move!!!")
-                if len(l)!=0:
+                print("\n******************Logical Deadend******************\nPraying to the Almighty and making a random move!!!")
+                if len(l) != 0:
                     return random.choice(l)  
                 else:
                     return random.choice(r)
@@ -93,8 +98,8 @@ class DummyPlayer:
     def add_equation_to_knowledgebase(self, new_equation):
         if new_equation not in self.knowledge_base:
             self.knowledge_base.add(new_equation)
-            print("Adding: ", new_equation)
-            print(self.knowledge_base)
+            # print("Adding: ", new_equation)
+            # print(self.knowledge_base)
             if new_equation.rhs == 1 and len(new_equation.lhs) == 1:
                 tepm = 0
             if len(new_equation.lhs) == 1:
@@ -104,7 +109,8 @@ class DummyPlayer:
                         if (row, col, 0) not in self.safe_moves:
                             
                             self.safe_moves.insert(0, (row, col, 0))
-                            print(self.safe_moves)  
+                            print("Inference: {} = 0 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i, j)) for i, j in new_equation.influence_blocks])))
+                            # print("Safe Moves: ", self.safe_moves)
                             self.add_equation_to_knowledgebase(Equation([(row, col)], 0, new_equation.influence_blocks))
                 elif new_equation.rhs == 1:
                   #  self.knowledge_base.remove(new_equation)
@@ -112,7 +118,8 @@ class DummyPlayer:
                         if (row, col, 1) not in self.safe_moves:
                             
                             self.safe_moves.insert(0, (row, col, 1))
-                            print(self.safe_moves)                
+                            print("Inference: {} = 1 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            # print("Safe Moves: ", self.safe_moves)
                             self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))            
 
                 
@@ -123,13 +130,16 @@ class DummyPlayer:
                     for row, col in new_equation.lhs:
                         if (row, col, 0) not in self.safe_moves:
                             self.safe_moves.insert(0, (row, col, 0))
-                            print(row,col)
+                            print("Inference: {} = 0 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            # print("Safe Moves: ", self.safe_moves)
                         self.add_equation_to_knowledgebase(Equation([(row, col)], 0, new_equation.influence_blocks))
                 elif new_equation.rhs == len(new_equation.lhs):
                     self.knowledge_base.remove(new_equation)
                     for row, col in new_equation.lhs:
                         if (row, col, 1) not in self.safe_moves:
                             self.safe_moves.insert(0, (row, col, 1))
+                            print("Inference: {} = 1 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            # print("Safe Moves: ", self.safe_moves)
                         self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))
 
             for eq in self.knowledge_base.copy():
@@ -149,7 +159,7 @@ class DummyPlayer:
 
         if len(LHS) != 0:
             new_equation = Equation(LHS, RHS, [(info[0], info[1])])
-            print(info[2], [(info[0], info[1])])
+            print("Adding Info : ", new_equation)
             self.add_equation_to_knowledgebase(new_equation)
 
 
@@ -288,8 +298,8 @@ def parseinput(inputstring, gridsize, helpmessage):
 
 def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
     if grid is None:
-        gridsize = 9
-        numberofmines = 10
+        gridsize = 10
+        numberofmines = 20
         grid = []
         mines = []
         dummyPlayer.gridsize = gridsize
@@ -394,3 +404,4 @@ if __name__ == "__main__":
     playgame(DummyPlayer(), grid, numberofmines, mines)
     # playgame(DummyPlayer(), None, None, None)
     # playgame()
+
