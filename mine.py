@@ -419,7 +419,7 @@ if __name__ == "__main__":
                 sum1=sum1/i
                 rmse=np.sqrt(sum1)
               #  sum(s for s, t in q),sum(t for s, t in q)
-                f.write("{0};{1};{2};{3};{4}\n".format( i, j, k,rmse,density,x))
+                f.write("{0};{1};{2};{3};{4};{5}\n".format( i, j, k,rmse,density,x))
     # Negative Testcase
     '''
     numberofmines = 10
