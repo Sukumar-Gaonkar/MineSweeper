@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 """
+Created on Sun Oct 28 10:43:23 2018
+
+@author: Karra's
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Mon Oct 22 19:05:39 2018
 """
 import random
 import re
 import time
-from operator import eq
+#from operator import eq
 from string import ascii_lowercase
 import numpy as np
 
@@ -43,6 +50,7 @@ class DummyPlayer:
         self.grid = []
         self.knowledge_base = set()
         self.safe_moves = []
+        self.max_inference_length=0
 
     def next_move(self):
         print(self.knowledge_base)
@@ -103,6 +111,7 @@ class DummyPlayer:
             # print(self.knowledge_base)
             if new_equation.rhs == 1 and len(new_equation.lhs) == 1:
                 tepm = 0
+                
             if len(new_equation.lhs) == 1:
                 if new_equation.rhs == 0:
                   #  self.knowledge_base.remove(new_equation)
@@ -111,6 +120,7 @@ class DummyPlayer:
 
                             self.safe_moves.insert(0, (row, col, 0))
                             print("Inference: {} = 0 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i, j)) for i, j in new_equation.influence_blocks])))
+                            self.max_inference_length=max(self.max_inference_length,len(new_equation.influence_blocks))
                             # print("Safe Moves: ", self.safe_moves)
                             self.add_equation_to_knowledgebase(Equation([(row, col)], 0, new_equation.influence_blocks))
                 elif new_equation.rhs == 1:
@@ -120,6 +130,7 @@ class DummyPlayer:
 
                             self.safe_moves.insert(0, (row, col, 1))
                             print("Inference: {} = 1 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            self.max_inference_length=max(self.max_inference_length,len(new_equation.influence_blocks))
                             # print("Safe Moves: ", self.safe_moves)
                             self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))
 
@@ -132,6 +143,7 @@ class DummyPlayer:
                         if (row, col, 0) not in self.safe_moves:
                             self.safe_moves.insert(0, (row, col, 0))
                             print("Inference: {} = 0 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            self.max_inference_length=max(self.max_inference_length,len(new_equation.influence_blocks))
                             # print("Safe Moves: ", self.safe_moves)
                         self.add_equation_to_knowledgebase(Equation([(row, col)], 0, new_equation.influence_blocks))
                 elif new_equation.rhs == len(new_equation.lhs):
@@ -140,6 +152,7 @@ class DummyPlayer:
                         if (row, col, 1) not in self.safe_moves:
                             self.safe_moves.insert(0, (row, col, 1))
                             print("Inference: {} = 1 : {}".format(Equation.cord_to_str((row, col)), str([Equation.cord_to_str((i,j)) for i, j in new_equation.influence_blocks])))
+                            self.max_inference_length=max(self.max_inference_length,len(new_equation.influence_blocks))
                             # print("Safe Moves: ", self.safe_moves)
                         self.add_equation_to_knowledgebase(Equation([(row, col)], 1, new_equation.influence_blocks))
 
@@ -204,7 +217,9 @@ def showgrid(grid):
 
 def getrandomcell(grid):
     gridsize = len(grid)
-
+    #r=random.sample(range(gridsize),2)
+    #a=r[0]
+    #b=r[1]
     a = random.randint(0, gridsize - 1)
     b = random.randint(0, gridsize - 1)
 
@@ -365,7 +380,7 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
                 showgrid(grid)
                 #if playagain():
                     #playgame()
-                return 0
+                return 0,dummyPlayer.max_inference_length
 
             elif currcell == ' ':
                 cell_value = showcells(grid, currgrid, rowno, colno)
@@ -385,7 +400,7 @@ def playgame(dummyPlayer=None, grid=None, numberofmines=-1, mines=None):
                 '''
                 if playagain():
                     playgame()'''
-                return 1
+                return 1,dummyPlayer.max_inference_length
 
         showgrid(currgrid)
         print(message)
@@ -401,25 +416,27 @@ if __name__ == "__main__":
     # mines = [(1, 2), (2, 2)]
     fileName = "D:/results/profilerResults_" + time.strftime("%Y%m%d-%H%M%S") + ".csv"
     f = open(fileName, "a", 1)
-    f.write("Mines;Gridsize;IterationNo;Rmse;Density;Result\n")
+    f.write("Mines;Gridsize;IterationNo;Rmse;Density;Max_Inference_length,Result\n")
 
-    for i in range(5,20,2): # i=mines
-        for j in range(5,20,5): # j=gridsize
-            for k in range(1,5):#k=iteration no
-
-                a = random.randint(0,  j-1)
-                b = random.randint(0, j-1)
-                p,q=setupgrid(j, (a,b), i)
-                x=playgame(DummyPlayer(), p, i, q)
-                density=i/j
-                mean=(sum(s for s, t in q)/j,sum(t for s, t in q)/j)
+    for no_of_mines in range(5,20,2): # i=mines
+        for grid_size in range(5,20,5): # j=gridsize
+            for iter_no in range(1,5):#k=iteration no
+                
+                a = random.randint(0,grid_size-1)
+                b = random.randint(0,grid_size-1)
+                grid_,mine_coord=setupgrid(grid_size, (a,b), no_of_mines)
+                Result,maximum_inference_len=playgame(DummyPlayer(), grid_, no_of_mines, mine_coord)
+             #   print(Result)
+                print(Result)
+                density=(grid_size*grid_size)/no_of_mines
+                mean=(sum(s for s, t in mine_coord)/no_of_mines,sum(t for s, t in mine_coord)/no_of_mines)
                 sum1=0
-                for i_1 in range(len(q)):
-                    sum1=sum1+np.sum(np.square(np.subtract(q[i_1],mean)))
-                sum1=sum1/i
+                for i_1 in range(len(mine_coord)):
+                    sum1=sum1+np.sum(np.square(np.subtract(mine_coord[i_1],mean)))
+                sum1=sum1/no_of_mines
                 rmse=np.sqrt(sum1)
               #  sum(s for s, t in q),sum(t for s, t in q)
-                f.write("{0};{1};{2};{3};{4};{5}\n".format( i, j, k,rmse,density,x))
+                f.write("{0};{1};{2};{3};{4};{5};{6}\n".format( no_of_mines, grid_size, iter_no,rmse,density,maximum_inference_len,Result))
     # Negative Testcase
     '''
     numberofmines = 10
