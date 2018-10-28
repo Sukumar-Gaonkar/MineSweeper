@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct 28 10:43:23 2018
-
-@author: Karra's
-"""
 
 # -*- coding: utf-8 -*-
 """
@@ -15,8 +9,9 @@ import time
 #from operator import eq
 from string import ascii_lowercase
 import numpy as np
-
+import gc 
     
+
 class Equation:
     def __init__(self, lhs, rhs, influence_blocks):
         self.lhs = frozenset(lhs)
@@ -53,6 +48,7 @@ class DummyPlayer:
         self.max_inference_length=0
 
     def next_move(self):
+        #import numpy as np
         print(self.knowledge_base)
         if len(self.safe_moves) != 0:
             move = self.safe_moves.pop()
@@ -76,9 +72,9 @@ class DummyPlayer:
                                 #return chr(ord('a') + j) + str(i + 1)
                 print("\n******************Logical Deadend******************\nPraying to the Almighty and making a random move!!!")
                 if len(l) != 0:
-                    return random.choice(l)
+                    return np.random.choice(l)
                 else:
-                    return random.choice(r)
+                    return np.random.choice(r)
 
               #  else:
                     # No cell was found which is unexplored and not present in any equation's LHS.
@@ -216,12 +212,17 @@ def showgrid(grid):
 
 
 def getrandomcell(grid):
+    
     gridsize = len(grid)
     #r=random.sample(range(gridsize),2)
-    #a=r[0]
-    #b=r[1]
-    a = random.randint(0, gridsize - 1)
-    b = random.randint(0, gridsize - 1)
+    #import numpy as np
+    #print(len(grid))
+    r=np.random.choice(gridsize, 2)
+    #print(r)
+    a=r[0]
+    b=r[1]
+   # a = random.randint(0, gridsize - 1)
+   # b = random.randint(0, gridsize - 1)
 
     return (a, b)
 
@@ -245,8 +246,9 @@ def getmines(grid, start, numberofmines):
     neighbors = getneighbors(grid, *start)
 
     for i in range(numberofmines):
+        print(numberofmines)
         cell = getrandomcell(grid)
-        while cell == start or cell in mines or cell in neighbors:
+        while cell == start or cell in mines: #or cell in neighbors:
             cell = getrandomcell(grid)
         mines.append(cell)
 
@@ -427,7 +429,7 @@ if __name__ == "__main__":
                 grid_,mine_coord=setupgrid(grid_size, (a,b), no_of_mines)
                 Result,maximum_inference_len=playgame(DummyPlayer(), grid_, no_of_mines, mine_coord)
              #   print(Result)
-                print(Result)
+                #print(Result)
                 density=(grid_size*grid_size)/no_of_mines
                 mean=(sum(s for s, t in mine_coord)/no_of_mines,sum(t for s, t in mine_coord)/no_of_mines)
                 sum1=0
@@ -437,6 +439,7 @@ if __name__ == "__main__":
                 rmse=np.sqrt(sum1)
               #  sum(s for s, t in q),sum(t for s, t in q)
                 f.write("{0};{1};{2};{3};{4};{5};{6}\n".format( no_of_mines, grid_size, iter_no,rmse,density,maximum_inference_len,Result))
+                gc.collect()
     # Negative Testcase
     '''
     numberofmines = 10
